@@ -155,7 +155,7 @@ def construct_pyplot(head_json: object, ch1_data: [float] = None, ch2_data: [flo
 
     # Set title (optional)
     if title:
-        ax.set_title(title)
+        ax.set_title(title, y=1.04)
 
     plotter.apply_head(head_json)
 
