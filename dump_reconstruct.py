@@ -51,7 +51,9 @@ if __name__ == "__main__":
         plt = construct_pyplot(
                 json.loads(proc.head[5:]),
                 to_screen(DataProcessor.samples_to_ints(proc.ch1_data[5:]), 8),
-                to_screen(DataProcessor.samples_to_ints(proc.ch2_data[5:]), 8))
+                to_screen(DataProcessor.samples_to_ints(proc.ch2_data[5:]), 8),
+                f[:-4],
+                )
 
         if pargs.view:
             plt.show()
