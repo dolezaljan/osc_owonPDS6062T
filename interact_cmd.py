@@ -52,6 +52,9 @@ if __name__ == "__main__":
     c = OsciCommander(pargs.host, pargs.port, False)
 
     import code, rlcompleter, readline
+    history_file_path=os.path.expanduser('~/.python_history')
+    if os.path.exists(history_file_path):
+        readline.read_history_file(history_file_path)
     readline.parse_and_bind("tab: complete")
     print(" - c.query('*IDN?')")
     print(" - c.write(':HORIzontal:SCALe 100ms')")
