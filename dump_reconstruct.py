@@ -6,7 +6,8 @@ import json
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from live_dump import DataProcessor
-from osc_plot import construct_pyplot, to_screen
+import matplotlib.pyplot as plt
+from osc_plot import Plotter, to_screen
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Relay updates from oscilloscope and commands to it over network. Allows to have multiple clients connected to single osci.")
@@ -26,7 +27,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "-v",
         "--view",
-        help="Display matplotlib instead of writing out corresponding jpg file.",
+        help="Display matplotlib instead of writing out corresponding jpg file. Arrow keys allow to navigate to neighboring files.",
         action="store_true"
     )
     return parser
@@ -43,19 +44,57 @@ if __name__ == "__main__":
     else:
         files_to_process.append(pargs.file)
 
-    for f in files_to_process:
+    # init plot
+    plotter = Plotter()
+    ch1_color = "#eed807"
+    ch2_color = "#67c7ff"
+    fig_ax = plotter.init_plot([ch1_color, ch2_color])
+    fig, ax = fig_ax
+
+    ln1, = plt.plot([], [], color=ch1_color)
+    ln2, = plt.plot([], [], color=ch2_color)
+    lines = [ln1, ln2]
+
+    def plot_file(f: str):
         with open(f, 'rb') as dat_file:
             data=dat_file.read()
         proc.load_dump_obj(data)
 
-        plt = construct_pyplot(
-                json.loads(proc.head[5:]),
-                to_screen(DataProcessor.samples_to_ints(proc.ch1_data[5:]), 8),
-                to_screen(DataProcessor.samples_to_ints(proc.ch2_data[5:]), 8),
-                f[:-4],
-                )
+        ax.set_title(f[:-4], y=1.04)
+
+        head_json = json.loads(proc.head[5:])
+        ch1_data = to_screen(DataProcessor.samples_to_ints(proc.ch1_data[5:]), 8)
+        ch2_data = to_screen(DataProcessor.samples_to_ints(proc.ch2_data[5:]), 8)
+
+        plotter.apply_head(head_json)
+
+        x_data_pts_range = plotter.get_x_pts_range()
+        if ch1_data:
+            lines[0].set_data(x_data_pts_range, ch1_data) if ch1_data else None
+        if ch2_data:
+            lines[1].set_data(x_data_pts_range, ch2_data) if ch2_data else None
+
+    for f in files_to_process:
+        plot_file(f)
 
         if pargs.view:
+            all_files = files_to_process
+            next_f = f
+            def nav(event):
+                global next_f
+                if event.key == 'right':
+                    next_f = all_files[(all_files.index(next_f) + 1)%len(all_files)]
+                elif event.key == 'left':
+                    next_f = all_files[(all_files.index(next_f) - 1)%len(all_files)]
+                else:
+                    return
+                plot_file(next_f)
+                plt.show()
+            fig.canvas.mpl_connect('key_press_event', nav)
+            if not os.path.isdir(pargs.file):
+                print("loading all neighboring files: use left <- and right -> arrow keys to navigate")
+                f_dir = os.path.dirname(f)
+                all_files = sorted(map(lambda p: f_dir+'/'+p, os.listdir(f_dir)))
             plt.show()
         else:
             target_file = f[:-3]+'jpg'
